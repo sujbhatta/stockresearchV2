@@ -7,16 +7,21 @@ import numpy as np
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables from .env file if it exists (optional)
+# If GOOGLE_API_KEY is already set in system environment, it will be used
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
 
-# Configure Gemini
-GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
+# Configure Gemini - check both .env file and system environment
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY') or os.getenv('GOOGLE_API_KEY')
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
+    print(f"✓ Google Gemini API configured successfully")
+else:
+    print("⚠ WARNING: GOOGLE_API_KEY not found. AI report generation will not work.")
+    print("  Set GOOGLE_API_KEY in system environment or create a .env file")
 
 # Cache directory
 CACHE_DIR = 'cache'
