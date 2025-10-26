@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Research Dashboard</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            background-color: #fff;
+            border-bottom: 2px solid #667eea;
+            font-weight: 600;
+            color: #333;
+        }
+        .metric-label {
+            font-weight: 600;
+            color: #666;
+        }
+        .metric-value {
+            font-size: 1.1rem;
+            color: #333;
+        }
+        .btn-generate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 2rem;
+        }
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
+        #chartContainer {
+            height: 400px;
+            position: relative;
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .report-content {
+            white-space: pre-wrap;
+            line-height: 1.8;
+            font-size: 0.95rem;
+        }
+        .report-content h1, .report-content h2, .report-content h3 {
+            color: #667eea;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .report-content strong {
+            color: #764ba2;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <h1 class="mb-0">Stock Research Dashboard</h1>
+            <p class="mb-0">Real-time analysis of NIFTY 50 stocks with AI-powered insights</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Stock Selector -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <label for="stockSelector" class="form-label">Select Stock</label>
+                        <select class="form-select form-select-lg" id="stockSelector">
+                            <option value="">Choose a stock...</option>
+                            {% for stock in stocks %}
+                            <option value="{{ stock }}">{{ stock }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Display Area -->
+        <div id="dataArea" style="display: none;">
+            <div class="row">
+                <!-- Left Column: Chart -->
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Price Chart with Technical Indicators</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="chartContainer">
+                                <canvas id="stockChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RSI Chart -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">RSI (14) Indicator</h5>
+                        </div>
+                        <div class="card-body">
+                            <div style="height: 200px;">
+                                <canvas id="rsiChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Metrics and Report -->
+                <div class="col-md-4">
+                    <!-- Key Metrics -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Key Metrics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="metric-label">Current Price</div>
+                                <div class="metric-value" id="currentPrice">-</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="metric-label">52-Week Range</div>
+                                <div class="metric-value" id="weekRange">-</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="metric-label">P/E Ratio</div>
+                                <div class="metric-value" id="peRatio">-</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="metric-label">Market Cap</div>
+                                <div class="metric-value" id="marketCap">-</div>
+                            </div>
+                            <hr>
+                            <div class="mb-3">
+                                <div class="metric-label">MA20</div>
+                                <div class="metric-value" id="ma20">-</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="metric-label">MA50</div>
+                                <div class="metric-value" id="ma50">-</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="metric-label">MA200</div>
+                                <div class="metric-value" id="ma200">-</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="metric-label">RSI (14)</div>
+                                <div class="metric-value" id="rsi">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Generate Report Button -->
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <button class="btn btn-generate w-100" id="generateReportBtn">
+                                Generate AI Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="reportModalLabel">Investment Report</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="reportContent" class="report-content">
+                        <!-- Report will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Main JavaScript -->
+    <script>
+        let stockChart = null;
+        let rsiChart = null;
+        let currentSymbol = null;
+
+        // Stock selector change event
+        document.getElementById('stockSelector').addEventListener('change', async (e) => {
+            const symbol = e.target.value;
+            if (symbol) {
+                currentSymbol = symbol;
+                await loadStockData(symbol);
+            } else {
+                document.getElementById('dataArea').style.display = 'none';
+            }
+        });
+
+        // Generate report button click
+        document.getElementById('generateReportBtn').addEventListener('click', async () => {
+            if (!currentSymbol) return;
+
+            const btn = document.getElementById('generateReportBtn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
+
+            try {
+                const response = await fetch(`/api/report/${currentSymbol}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                // Convert markdown-style bold to HTML
+                let reportHtml = data.report.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                document.getElementById('reportContent').innerHTML = reportHtml;
+                const modal = new bootstrap.Modal(document.getElementById('reportModal'));
+                modal.show();
+            } catch (error) {
+                alert('Error generating report: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+
+        async function loadStockData(symbol) {
+            // Show loading
+            document.getElementById('dataArea').style.display = 'block';
+
+            try {
+                const response = await fetch(`/api/stock/${symbol}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                // Update metrics
+                document.getElementById('currentPrice').textContent = `₹${data.price}`;
+                document.getElementById('weekRange').textContent = `₹${data.low52w} - ₹${data.high52w}`;
+                document.getElementById('peRatio').textContent = typeof data.pe_ratio === 'number' ? data.pe_ratio.toFixed(2) : 'N/A';
+
+                // Format market cap
+                if (typeof data.market_cap === 'number') {
+                    const capCr = data.market_cap / 10000000;
+                    document.getElementById('marketCap').textContent = `₹${capCr.toFixed(0)} Cr`;
+                } else {
+                    document.getElementById('marketCap').textContent = 'N/A';
+                }
+
+                document.getElementById('ma20').textContent = data.ma20 ? `₹${data.ma20}` : 'N/A';
+                document.getElementById('ma50').textContent = data.ma50 ? `₹${data.ma50}` : 'N/A';
+                document.getElementById('ma200').textContent = data.ma200 ? `₹${data.ma200}` : 'N/A';
+                document.getElementById('rsi').textContent = data.rsi ? data.rsi.toFixed(2) : 'N/A';
+
+                // Update charts
+                updateCharts(data);
+            } catch (error) {
+                alert('Error loading stock data: ' + error.message);
+            }
+        }
+
+        function updateCharts(data) {
+            const dates = data.ohlcv_data.map(d => d.date);
+            const closes = data.ohlcv_data.map(d => d.close);
+            const ma20 = data.ohlcv_data.map(d => d.ma20);
+            const ma50 = data.ohlcv_data.map(d => d.ma50);
+            const ma200 = data.ohlcv_data.map(d => d.ma200);
+            const rsi = data.ohlcv_data.map(d => d.rsi);
+
+            // Destroy existing charts
+            if (stockChart) {
+                stockChart.destroy();
+            }
+            if (rsiChart) {
+                rsiChart.destroy();
+            }
+
+            // Price Chart
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            stockChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Price',
+                            data: closes,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'MA20',
+                            data: ma20,
+                            borderColor: 'rgb(255, 99, 132)',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            tension: 0.1,
+                            borderDash: [5, 5]
+                        },
+                        {
+                            label: 'MA50',
+                            data: ma50,
+                            borderColor: 'rgb(255, 159, 64)',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            tension: 0.1,
+                            borderDash: [5, 5]
+                        },
+                        {
+                            label: 'MA200',
+                            data: ma200,
+                            borderColor: 'rgb(153, 102, 255)',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            tension: 0.1,
+                            borderDash: [5, 5]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: `${data.symbol} - 1 Year Price Chart`
+                        }
+                    },
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Price (₹)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // RSI Chart
+            const rsiCtx = document.getElementById('rsiChart').getContext('2d');
+            rsiChart = new Chart(rsiCtx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'RSI',
+                        data: rsi,
+                        borderColor: 'rgb(102, 126, 234)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    yMin: 70,
+                                    yMax: 70,
+                                    borderColor: 'red',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5]
+                                },
+                                line2: {
+                                    type: 'line',
+                                    yMin: 30,
+                                    yMax: 30,
+                                    borderColor: 'green',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5]
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'RSI'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    if (value === 30 || value === 70) {
+                                        return value;
+                                    }
+                                    return value % 20 === 0 ? value : '';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
